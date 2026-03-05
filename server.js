@@ -21,7 +21,7 @@ connectDB();
 const corsOptions = {
   origin: [
     "http://localhost:5173",        // Local React/Vite frontend
-    "https://servixofrontend.vercel.app/"    // Production frontend
+    "https://servixofrontend.vercel.app"    // Production frontend
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   
