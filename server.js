@@ -18,11 +18,11 @@ const app = express();
 // Connect Database
 connectDB();
 
-// CORS Configuration
+// CORS Configuration - MUST be before other middleware
 const corsOptions = {
   origin: [
-    "http://localhost:5173",                // Local frontend
-    "https://servixofrontend.vercel.app"    // Production frontend
+    "http://localhost:5173",
+    "https://servixofrontend.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
@@ -32,7 +32,9 @@ const corsOptions = {
     "Accept",
     "Origin"
   ],
-  credentials: true
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Middleware
