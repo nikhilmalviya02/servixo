@@ -1,4 +1,4 @@
-require("dotenv").config(); 
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -13,21 +13,49 @@ const reviewRoutes = require("./routes/reviewRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 
+const app = express();
+
 // Connect database
 connectDB();
 
-const app = express();
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",        // Local React/Vite frontend
+    "https://servixo.vercel.app"    // Production frontend
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin"
+  ],
+
+  exposedHeaders: [
+    "Content-Length",
+    "Content-Type"
+  ],
+
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
 
 // Middleware
-app.use(cors());
+app.use(
+  cors(corsOptions)
+);
+
 app.use(express.json());
 
-// Basic route
+// Routes
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/services", serviceRoutes);
@@ -36,9 +64,5 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
 
-// Server start
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Export for Vercel
+module.exports = app;

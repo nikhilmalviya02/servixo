@@ -50,7 +50,7 @@ exports.login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({
+    res.status(200).json({
       message: "Login successful",
       token,
       user,
