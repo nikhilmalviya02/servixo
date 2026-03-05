@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const Service = require("../models/Service");
 const Booking = require("../models/Booking");
-const Review = require("../models/review");
+const Review = require("../models/Review");
 
 exports.getUsers = async (req, res) => {
   try {
