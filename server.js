@@ -15,10 +15,10 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
-// Connect Database
+// Connect database
 connectDB();
 
-// CORS Configuration - MUST be before other middleware
+// CORS
 const corsOptions = {
   origin: [
     "http://localhost:5173",
@@ -32,25 +32,19 @@ const corsOptions = {
     "Accept",
     "Origin"
   ],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  credentials: true
 };
 
 // Middleware
 app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options("*", cors(corsOptions));
-
 app.use(express.json());
 
-// Test Route
+// Test route
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// API Routes
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/services", serviceRoutes);
