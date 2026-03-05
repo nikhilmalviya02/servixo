@@ -15,16 +15,16 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
-// Connect database
+// Connect Database
 connectDB();
 
+// CORS Configuration
 const corsOptions = {
   origin: [
-    "http://localhost:5173",        // Local React/Vite frontend
+    "http://localhost:5173",                // Local frontend
     "https://servixofrontend.vercel.app"    // Production frontend
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  
   allowedHeaders: [
     "Content-Type",
     "Authorization",
@@ -32,30 +32,23 @@ const corsOptions = {
     "Accept",
     "Origin"
   ],
-
-  exposedHeaders: [
-    "Content-Length",
-    "Content-Type"
-  ],
-
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  credentials: true
 };
 
-
 // Middleware
-app.use(
-  cors(corsOptions)
-);
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
-// Routes
+// Test Route
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/services", serviceRoutes);
