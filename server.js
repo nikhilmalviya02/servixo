@@ -39,6 +39,8 @@ const corsOptions = {
 app.use("*", cors(corsOptions));
 app.use(express.json());
 
+app.options("*", cors(corsOptions));
+
 // Test route
 app.get("/", (req, res) => {
   res.send("API is running...");
