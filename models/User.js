@@ -65,6 +65,11 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String,
     },
+
+    servicesOffered: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );
