@@ -1,12 +1,16 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const admin = require("../config/firebaseAdmin");
 
 exports.register = async (req, res) => {
+
   try {
+
     const { name, email, password, role, servicesOffered } = req.body;
 
     const userExists = await User.findOne({ email });
+
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -17,11 +21,10 @@ exports.register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role,
+      role
     };
 
-    // Add servicesOffered only for providers
-    if (role === "provider" && servicesOffered && servicesOffered.length > 0) {
+    if (role === "provider" && servicesOffered?.length) {
       userData.servicesOffered = servicesOffered;
     }
 
@@ -29,30 +32,42 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       message: "User registered",
-      user,
+      user
     });
+
   } catch (error) {
+
     res.status(500).json({ error: error.message });
+
   }
+
 };
 
-
 exports.login = async (req, res) => {
+
   try {
+
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      { id: user._id, name: user.name, email: user.email, role: user.role },
+      {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -60,9 +75,75 @@ exports.login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       token,
-      user,
+      user
     });
+
   } catch (error) {
+
     res.status(500).json({ error: error.message });
+
   }
+
+};
+
+exports.googleLogin = async (req, res) => {
+
+  try {
+
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Firebase token is required" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(token);
+
+    const email = decodedToken.email;
+    const name = decodedToken.name;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email not found in Firebase token" });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email,
+        password: "",
+        role: "user"
+      });
+
+    }
+
+    const jwtToken = jwt.sign(
+      {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      message: "Google login successful",
+      token: jwtToken,
+      user
+    });
+
+  } catch (error) {
+
+    console.error("Google Login Error:", error.message);
+
+    res.status(500).json({
+      message: "Google login failed",
+      error: error.message
+    });
+
+  }
+
 };

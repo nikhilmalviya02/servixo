@@ -42,7 +42,15 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: true,
+      required: function() {
+        return !this.googleId; // Password required only if not using Google OAuth
+      },
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows null/undefined values (for non-Google users)
     },
 
     phone: {
