@@ -116,7 +116,7 @@ exports.googleLogin = async (req, res) => {
         email,
         googleId,
         avatar: picture,
-        role: "customer",
+        role: "user",
         isVerified: true
       });
 
