@@ -100,21 +100,32 @@ exports.googleLogin = async (req, res) => {
 
     const email = decodedToken.email;
     const name = decodedToken.name;
+    const googleId = decodedToken.uid;
+    const picture = decodedToken.picture;
 
     if (!email) {
       return res.status(400).json({ message: "Email not found in Firebase token" });
     }
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ $or: [{ email }, { googleId }] });
 
     if (!user) {
 
       user = await User.create({
         name: name || email.split('@')[0],
         email,
-        password: "",
-        role: "user"
+        googleId,
+        avatar: picture,
+        role: "user",
+        isVerified: true
       });
+
+    } else if (!user.googleId) {
+      
+      user.googleId = googleId;
+      user.avatar = picture;
+      user.isVerified = true;
+      await user.save();
 
     }
 
