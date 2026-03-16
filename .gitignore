@@ -2,3 +2,4 @@
 node_modules
 serviceAccountKey.json
 config/serviceAccountKey.json
+createAdmin.js
