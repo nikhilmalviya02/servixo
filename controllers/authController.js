@@ -90,7 +90,7 @@ exports.googleLogin = async (req, res) => {
 
   try {
 
-    const { token } = req.body;
+    const { token, role } = req.body;
 
     if (!token) {
       return res.status(400).json({ message: "Firebase token is required" });
@@ -116,7 +116,7 @@ exports.googleLogin = async (req, res) => {
         email,
         googleId,
         avatar: picture,
-        role: "user",
+        role: role || "user",
         isVerified: true
       });
 
