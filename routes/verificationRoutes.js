@@ -109,57 +109,58 @@ router.put("/:section", authMiddleware, async (req, res) => {
   }
 });
 
-// Upload document for verification
-router.post("/upload/:section", authMiddleware, async (req, res) => {
+// Upload document for verification - using dynamic multer middleware
+router.post("/upload/:section", authMiddleware, (req, res, next) => {
+  const { section } = req.params;
+  
+  const validSections = [
+    "aadharCard", "panCard", "drivingLicense", 
+    "skillCertificate", "workExperience", 
+    "bankAccount", "profilePhoto"
+  ];
+
+  if (!validSections.includes(section)) {
+    return res.status(400).json({ message: "Invalid verification section" });
+  }
+
+  // Use appropriate storage for each section
+  let sectionStorage;
+  switch (section) {
+    case "aadharCard":
+      sectionStorage = multer({ storage: aadharStorage });
+      break;
+    case "panCard":
+      sectionStorage = multer({ storage: panStorage });
+      break;
+    case "drivingLicense":
+      sectionStorage = multer({ storage: licenseStorage });
+      break;
+    case "skillCertificate":
+      sectionStorage = multer({ storage: certificateStorage });
+      break;
+    case "workExperience":
+      sectionStorage = multer({ storage: experienceStorage });
+      break;
+    case "bankAccount":
+      sectionStorage = multer({ storage: bankStorage });
+      break;
+    case "profilePhoto":
+      sectionStorage = multer({ storage: profileStorage });
+      break;
+    default:
+      sectionStorage = multer({ storage: createVerificationStorage('general') });
+  }
+
+  // Apply multer middleware with error handling
+  sectionStorage.single('file')(req, res, (err) => {
+    if (err) {
+      console.error("Multer error:", err);
+      return res.status(400).json({ message: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
-    const { section } = req.params;
-    
-    const validSections = [
-      "aadharCard", "panCard", "drivingLicense", 
-      "skillCertificate", "workExperience", 
-      "bankAccount", "profilePhoto"
-    ];
-
-    if (!validSections.includes(section)) {
-      return res.status(400).json({ message: "Invalid verification section" });
-    }
-
-    // Use appropriate storage for each section
-    let sectionStorage;
-    switch (section) {
-      case "aadharCard":
-        sectionStorage = multer({ storage: aadharStorage });
-        break;
-      case "panCard":
-        sectionStorage = multer({ storage: panStorage });
-        break;
-      case "drivingLicense":
-        sectionStorage = multer({ storage: licenseStorage });
-        break;
-      case "skillCertificate":
-        sectionStorage = multer({ storage: certificateStorage });
-        break;
-      case "workExperience":
-        sectionStorage = multer({ storage: experienceStorage });
-        break;
-      case "bankAccount":
-        sectionStorage = multer({ storage: bankStorage });
-        break;
-      case "profilePhoto":
-        sectionStorage = multer({ storage: profileStorage });
-        break;
-      default:
-        sectionStorage = multer({ storage: storage });
-    }
-
-    // Handle single file upload
-    sectionStorage.single('file')(req, res, async (err) => {
-      if (err) {
-        console.error("Upload error:", err);
-        return res.status(400).json({ message: err.message });
-      }
-
-      try {
         const file = req.file;
         
         if (!file) {
@@ -249,14 +250,9 @@ router.post("/upload/:section", authMiddleware, async (req, res) => {
           overallStatus: user.overallVerificationStatus,
           documentUrl: documentUrl
         });
-      } catch (error) {
-        console.error("Save verification error:", error);
-        res.status(500).json({ message: "Failed to save document" });
-      }
-    });
   } catch (error) {
-    console.error("Upload verification error:", error);
-    res.status(500).json({ message: "Failed to upload document" });
+    console.error("Save verification error:", error);
+    res.status(500).json({ message: "Failed to save document" });
   }
 });
 
