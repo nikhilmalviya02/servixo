@@ -161,7 +161,8 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-        const file = req.file;
+    const { section } = req.params;
+    const file = req.file;
         
         if (!file) {
           return res.status(400).json({ message: "No file uploaded" });
@@ -251,8 +252,17 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
           documentUrl: documentUrl
         });
   } catch (error) {
-    console.error("Save verification error:", error);
-    res.status(500).json({ message: "Failed to save document" });
+    console.error("Upload verification error:", error);
+    console.error("Error details:", {
+      section: req.params.section,
+      file: req.file,
+      user: req.user,
+      body: req.body
+    });
+    res.status(500).json({ 
+      message: "Failed to upload document",
+      error: error.message 
+    });
   }
 });
 
