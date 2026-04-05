@@ -26,6 +26,77 @@ const addressSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const verificationSchema = new mongoose.Schema({
+  aadharCard: {
+    number: String,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  },
+  panCard: {
+    number: String,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  },
+  drivingLicense: {
+    number: String,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  },
+  phone: {
+    number: String,
+    isVerified: { type: Boolean, default: false },
+    verifiedAt: Date,
+    otp: String,
+    otpExpires: Date
+  },
+  skillCertificates: [{
+    name: String,
+    issuer: String,
+    issueDate: Date,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  }],
+  workExperience: [{
+    company: String,
+    position: String,
+    duration: String,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  }],
+  bankAccount: {
+    accountNumber: String,
+    ifsc: String,
+    holderName: String,
+    documentUrl: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  },
+  profilePhoto: {
+    url: String,
+    cloudinaryPublicId: String,
+    status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    verifiedAt: Date,
+    rejectionReason: String
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -77,6 +148,17 @@ const userSchema = new mongoose.Schema(
     servicesOffered: {
       type: [String],
       default: [],
+    },
+
+    verification: {
+      type: verificationSchema,
+      default: {}
+    },
+
+    overallVerificationStatus: {
+      type: String,
+      enum: ['not_started', 'partial', 'verified', 'rejected'],
+      default: 'not_started'
     },
   },
   { timestamps: true }
