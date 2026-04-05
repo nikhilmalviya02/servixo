@@ -109,7 +109,7 @@ router.put("/:section", authMiddleware, async (req, res) => {
   }
 });
 
-// Upload document for verification - using dynamic multer middleware
+// Upload document for verification
 router.post("/upload/:section", authMiddleware, (req, res, next) => {
   const { section } = req.params;
   
@@ -123,38 +123,28 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
     return res.status(400).json({ message: "Invalid verification section" });
   }
 
-  // Use appropriate storage for each section
-  let sectionStorage;
-  switch (section) {
-    case "aadharCard":
-      sectionStorage = multer({ storage: aadharStorage });
-      break;
-    case "panCard":
-      sectionStorage = multer({ storage: panStorage });
-      break;
-    case "drivingLicense":
-      sectionStorage = multer({ storage: licenseStorage });
-      break;
-    case "skillCertificate":
-      sectionStorage = multer({ storage: certificateStorage });
-      break;
-    case "workExperience":
-      sectionStorage = multer({ storage: experienceStorage });
-      break;
-    case "bankAccount":
-      sectionStorage = multer({ storage: bankStorage });
-      break;
-    case "profilePhoto":
-      sectionStorage = multer({ storage: profileStorage });
-      break;
-    default:
-      sectionStorage = multer({ storage: createVerificationStorage('general') });
-  }
+  // Create storage for this section
+  const storage = createVerificationStorage(section);
+  const upload = multer({ 
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = /jpeg|jpg|png|pdf/;
+      const extname = allowedTypes.test(file.originalname.toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype);
 
-  // Apply multer middleware with error handling
-  sectionStorage.single('file')(req, res, (err) => {
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        cb(new Error("Only JPEG, JPG, PNG, and PDF files are allowed"));
+      }
+    }
+  }).single('file');
+
+  // Handle upload
+  upload(req, res, (err) => {
     if (err) {
-      console.error("Multer error:", err);
+      console.error("Upload error:", err);
       return res.status(400).json({ message: err.message });
     }
     next();
