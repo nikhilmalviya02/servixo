@@ -124,7 +124,10 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
   }
 
   // Create storage for this section
+  console.log("Creating storage for section:", section);
   const storage = createVerificationStorage(section);
+  console.log("Storage created successfully");
+
   const upload = multer({ 
     storage,
     limits: { fileSize: 10 * 1024 * 1024 },
@@ -144,34 +147,53 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
   // Handle upload
   upload(req, res, (err) => {
     if (err) {
-      console.error("Upload error:", err);
-      return res.status(400).json({ message: err.message });
+      console.error("Multer upload error:", err);
+      console.error("Error details:", {
+        message: err.message,
+        code: err.code,
+        limit: err.limit,
+        field: err.field,
+        storageError: err.storage
+      });
+      return res.status(400).json({ 
+        message: err.message,
+        details: err.code || 'UPLOAD_ERROR'
+      });
     }
+    console.log("Multer upload successful");
     next();
   });
 }, async (req, res) => {
   try {
     const { section } = req.params;
     const file = req.file;
+    
+    console.log("Upload request received:");
+    console.log("- Section:", section);
+    console.log("- File:", file);
+    console.log("- Request body:", req.body);
+    console.log("- User ID:", req.user?.id);
         
-        if (!file) {
-          return res.status(400).json({ message: "No file uploaded" });
-        }
+    if (!file) {
+      console.error("No file received in request");
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-        const user = await User.findById(req.user.id);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-        // Initialize verification object if it doesn't exist
-        if (!user.verification) {
-          user.verification = {};
-        }
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
 
-        const documentUrl = file.path; // Cloudinary URL
+    const documentUrl = file.path; // Cloudinary URL
+    console.log("Document URL from Cloudinary:", documentUrl);
 
-        // Handle different section types
-        if (section === "skillCertificate") {
+    // Handle different section types
+    if (section === "skillCertificate") {
           const { name, issuer, issueDate } = req.body;
           
           if (!user.verification.skillCertificates) {
@@ -203,14 +225,29 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
           });
         } else {
           // Single document sections
-          user.verification[section] = {
-            ...user.verification[section],
-            documentUrl,
-            cloudinaryPublicId: file.filename,
-            status: "pending",
-            verifiedAt: null,
-            rejectionReason: null
-          };
+          if (section === "profilePhoto") {
+            // Profile photo uses 'url' field instead of 'documentUrl'
+            user.verification[section] = {
+              ...user.verification[section],
+              url: documentUrl,  // Use 'url' for profilePhoto
+              cloudinaryPublicId: file.filename,
+              status: "pending",
+              verifiedAt: null,
+              rejectionReason: null
+            };
+            console.log("Profile photo saved with URL:", documentUrl);
+          } else {
+            // Other documents use 'documentUrl' field
+            user.verification[section] = {
+              ...user.verification[section],
+              documentUrl,
+              cloudinaryPublicId: file.filename,
+              status: "pending",
+              verifiedAt: null,
+              rejectionReason: null
+            };
+            console.log("Document saved with URL:", documentUrl);
+          }
 
           // Add additional fields if provided
           if (req.body.number) {
@@ -493,3 +530,32 @@ function calculateOverallStatus(verification) {
 }
 
 module.exports = router;
+
+// Test endpoint for debugging Cloudinary configuration
+router.post("/test-cloudinary", authMiddleware, async (req, res) => {
+  try {
+    console.log("Testing Cloudinary configuration...");
+    console.log("Environment vars:", {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? "SET" : "NOT SET",
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? "SET" : "NOT SET",
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? "SET" : "NOT SET"
+    });
+
+    // Test Cloudinary connection
+    const result = await cloudinary.api.ping();
+    console.log("Cloudinary ping result:", result);
+
+    res.json({ 
+      message: "Cloudinary configuration test successful",
+      cloudinaryConnected: true,
+      result
+    });
+  } catch (error) {
+    console.error("Cloudinary test failed:", error);
+    res.status(500).json({ 
+      message: "Cloudinary configuration test failed",
+      error: error.message,
+      cloudinaryConnected: false
+    });
+  }
+});
