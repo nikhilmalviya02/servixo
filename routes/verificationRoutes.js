@@ -33,7 +33,7 @@ const upload = multer({
 });
 
 // Bulk verification submission
-router.post("/", authMiddleware, upload.none(), async (req, res) => {
+router.post("/", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -55,9 +55,7 @@ router.post("/", authMiddleware, upload.none(), async (req, res) => {
       };
     }
 
-    // Handle file uploads (files are already uploaded individually)
-    // This endpoint mainly handles the final submission and status updates
-    
+    // This endpoint is for final submission only - files should already be uploaded
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
     
