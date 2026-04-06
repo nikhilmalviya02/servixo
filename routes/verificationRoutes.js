@@ -32,6 +32,48 @@ const upload = multer({
   },
 });
 
+// Bulk verification submission
+router.post("/", authMiddleware, upload.none(), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Initialize verification object if it doesn't exist
+    if (!user.verification) {
+      user.verification = {};
+    }
+
+    // Handle phone number verification
+    if (req.body.phoneNumber) {
+      user.verification.phone = {
+        ...user.verification.phone,
+        number: req.body.phoneNumber,
+        isVerified: false,
+        status: "pending"
+      };
+    }
+
+    // Handle file uploads (files are already uploaded individually)
+    // This endpoint mainly handles the final submission and status updates
+    
+    // Update overall verification status
+    user.overallVerificationStatus = calculateOverallStatus(user.verification);
+    
+    await user.save();
+
+    res.json({
+      message: "Verification submitted successfully",
+      verification: user.verification,
+      overallStatus: user.overallVerificationStatus
+    });
+  } catch (error) {
+    console.error("Bulk verification submission error:", error);
+    res.status(500).json({ message: "Failed to submit verification" });
+  }
+});
+
 // Get verification data
 router.get("/", authMiddleware, async (req, res) => {
   try {
