@@ -15,6 +15,10 @@ const {
   updateCategory,
   deleteCategory,
   getUserDetails,
+  getVerifications,
+  getVerificationDetails,
+  updateVerificationStatus,
+  reviewVerificationSection,
 } = require("../controllers/adminController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -45,5 +49,11 @@ router.delete("/categories/:name", protect, authorizeRoles("admin"), deleteCateg
 
 // User Details
 router.get("/user/:id/details", protect, authorizeRoles("admin"), getUserDetails);
+
+// Verification Management
+router.get("/verifications", protect, authorizeRoles("admin"), getVerifications);
+router.get("/verification/:userId", protect, authorizeRoles("admin"), getVerificationDetails);
+router.put("/verification/:userId/:section", protect, authorizeRoles("admin"), updateVerificationStatus);
+router.post("/verification/:userId/:section/review", protect, authorizeRoles("admin"), reviewVerificationSection);
 
 module.exports = router;

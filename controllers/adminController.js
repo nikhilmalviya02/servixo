@@ -256,3 +256,222 @@ exports.getUserDetails = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Verification Management
+exports.getVerifications = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10, search } = req.query;
+    
+    // Build query
+    let query = { role: "provider", "verification.0": { $exists: true } };
+    
+    if (status && status !== "all") {
+      query.overallVerificationStatus = status;
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    const skip = (page - 1) * limit;
+    
+    const providers = await User.find(query)
+      .select("name email phone verification overallVerificationStatus createdAt")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await User.countDocuments(query);
+    
+    // Calculate verification stats
+    const stats = {
+      pending: await User.countDocuments({ role: "provider", overallVerificationStatus: "partial" }),
+      verified: await User.countDocuments({ role: "provider", overallVerificationStatus: "verified" }),
+      rejected: await User.countDocuments({ role: "provider", overallVerificationStatus: "rejected" }),
+      notStarted: await User.countDocuments({ role: "provider", overallVerificationStatus: "not_started" })
+    };
+    
+    res.json({
+      providers,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / limit),
+        total
+      },
+      stats
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getVerificationDetails = async (req, res) => {
+  try {
+    const provider = await User.findById(req.params.userId)
+      .select("name email phone verification overallVerificationStatus createdAt")
+      .populate("services", "title");
+    
+    if (!provider) {
+      return res.status(404).json({ message: "Provider not found" });
+    }
+    
+    if (provider.role !== "provider") {
+      return res.status(400).json({ message: "User is not a provider" });
+    }
+    
+    res.json(provider);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateVerificationStatus = async (req, res) => {
+  try {
+    const { userId, section } = req.params;
+    const { status, rejectionReason } = req.body;
+    
+    if (!["verified", "rejected", "pending"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    
+    const validSections = [
+      "aadharCard", "panCard", "drivingLicense", 
+      "phone", "bankAccount", "profilePhoto"
+    ];
+    
+    if (!validSections.includes(section)) {
+      return res.status(400).json({ message: "Invalid verification section" });
+    }
+    
+    const provider = await User.findById(userId);
+    if (!provider || provider.role !== "provider") {
+      return res.status(404).json({ message: "Provider not found" });
+    }
+    
+    if (!provider.verification) {
+      provider.verification = {};
+    }
+    
+    // Update section status
+    if (!provider.verification[section]) {
+      provider.verification[section] = {};
+    }
+    
+    provider.verification[section].status = status;
+    provider.verification[section].verifiedAt = status === "verified" ? new Date() : null;
+    provider.verification[section].rejectionReason = status === "rejected" ? rejectionReason : null;
+    provider.verification[section].reviewedBy = req.user.id;
+    provider.verification[section].reviewedAt = new Date();
+    
+    // Calculate overall verification status
+    const sections = [
+      provider.verification.aadharCard,
+      provider.verification.panCard,
+      provider.verification.drivingLicense,
+      provider.verification.phone,
+      provider.verification.bankAccount,
+      provider.verification.profilePhoto
+    ];
+    
+    const verifiedCount = sections.filter(s => s && s.status === "verified").length;
+    const rejectedCount = sections.filter(s => s && s.status === "rejected").length;
+    const pendingCount = sections.filter(s => s && s.status === "pending").length;
+    
+    if (verifiedCount === sections.length) {
+      provider.overallVerificationStatus = "verified";
+      provider.isVerified = true;
+    } else if (rejectedCount > 0) {
+      provider.overallVerificationStatus = "rejected";
+      provider.isVerified = false;
+    } else if (pendingCount > 0 || verifiedCount > 0) {
+      provider.overallVerificationStatus = "partial";
+      provider.isVerified = false;
+    } else {
+      provider.overallVerificationStatus = "not_started";
+      provider.isVerified = false;
+    }
+    
+    await provider.save();
+    
+    res.json({
+      message: `${section} verification ${status} successfully`,
+      verification: provider.verification,
+      overallStatus: provider.overallVerificationStatus
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.reviewVerificationSection = async (req, res) => {
+  try {
+    const { userId, section } = req.params;
+    const { reviewNote, action } = req.body;
+    
+    if (!["approve", "reject", "request_more"].includes(action)) {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+    
+    const validSections = [
+      "aadharCard", "panCard", "drivingLicense", 
+      "phone", "bankAccount", "profilePhoto"
+    ];
+    
+    if (!validSections.includes(section)) {
+      return res.status(400).json({ message: "Invalid verification section" });
+    }
+    
+    const provider = await User.findById(userId);
+    if (!provider || provider.role !== "provider") {
+      return res.status(404).json({ message: "Provider not found" });
+    }
+    
+    if (!provider.verification) {
+      provider.verification = {};
+    }
+    
+    if (!provider.verification[section]) {
+      provider.verification[section] = {};
+    }
+    
+    // Add review note
+    if (!provider.verification[section].reviewNotes) {
+      provider.verification[section].reviewNotes = [];
+    }
+    
+    provider.verification[section].reviewNotes.push({
+      note: reviewNote,
+      action,
+      reviewedBy: req.user.id,
+      reviewedAt: new Date()
+    });
+    
+    // Update status based on action
+    if (action === "approve") {
+      provider.verification[section].status = "verified";
+      provider.verification[section].verifiedAt = new Date();
+      provider.verification[section].rejectionReason = null;
+    } else if (action === "reject") {
+      provider.verification[section].status = "rejected";
+      provider.verification[section].rejectionReason = reviewNote;
+    } else if (action === "request_more") {
+      provider.verification[section].status = "pending";
+      provider.verification[section].rejectionReason = reviewNote;
+    }
+    
+    provider.verification[section].reviewedBy = req.user.id;
+    provider.verification[section].reviewedAt = new Date();
+    
+    await provider.save();
+    
+    res.json({
+      message: `Review note added for ${section}`,
+      verification: provider.verification
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
