@@ -127,21 +127,21 @@ exports.deleteReview = async (req, res) => {
     if (!review) {
       return res.status(404).json({ message: "Review not found" });
     }
-    
+
     // Update service rating after deleting review
     const service = await Service.findById(review.service);
     if (service && service.totalReviews > 0) {
       const newTotalReviews = service.totalReviews - 1;
       const currentTotalRating = service.averageRating * service.totalReviews;
-      const newAverageRating = newTotalReviews > 0 
-        ? (currentTotalRating - review.rating) / newTotalReviews 
+      const newAverageRating = newTotalReviews > 0
+        ? (currentTotalRating - review.rating) / newTotalReviews
         : 0;
-      
+
       service.totalReviews = newTotalReviews;
       service.averageRating = Math.round(newAverageRating * 10) / 10;
       await service.save();
     }
-    
+
     await Review.findByIdAndDelete(req.params.id);
     res.json({ message: "Review deleted successfully" });
   } catch (error) {
@@ -171,13 +171,13 @@ exports.createCategory = async (req, res) => {
     if (!name) {
       return res.status(400).json({ message: "Category name is required" });
     }
-    
+
     // Check if category already exists
     const existingService = await Service.findOne({ category: name });
     if (existingService) {
       return res.status(400).json({ message: "Category already exists" });
     }
-    
+
     res.json({ message: "Category created successfully", name });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -190,7 +190,7 @@ exports.updateCategory = async (req, res) => {
     if (!oldName || !newName) {
       return res.status(400).json({ message: "Old and new category names are required" });
     }
-    
+
     await Service.updateMany({ category: oldName }, { category: newName });
     res.json({ message: "Category updated successfully" });
   } catch (error) {
@@ -201,15 +201,15 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   try {
     const { name } = req.params;
-    
+
     // Check if any services use this category
     const servicesCount = await Service.countDocuments({ category: name });
     if (servicesCount > 0) {
-      return res.status(400).json({ 
-        message: `Cannot delete category. ${servicesCount} services are using this category.` 
+      return res.status(400).json({
+        message: `Cannot delete category. ${servicesCount} services are using this category.`
       });
     }
-    
+
     res.json({ message: "Category deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -223,24 +223,24 @@ exports.getUserDetails = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     // Get user's bookings
     const bookings = await Booking.find({ user: req.params.id })
       .populate("service", "title price")
       .sort({ createdAt: -1 });
-    
+
     // Get user's services if provider
     let services = [];
     if (user.role === "provider") {
       services = await Service.find({ provider: req.params.id })
         .populate("averageRating totalReviews");
     }
-    
+
     // Get user's reviews
     const reviews = await Review.find({ user: req.params.id })
       .populate("service", "title")
       .sort({ createdAt: -1 });
-    
+
     res.json({
       user,
       bookings,
@@ -261,31 +261,31 @@ exports.getUserDetails = async (req, res) => {
 exports.getVerifications = async (req, res) => {
   try {
     const { status, page = 1, limit = 10, search } = req.query;
-    
+
     // Build query
     let query = { role: "provider", "verification.0": { $exists: true } };
-    
+
     if (status && status !== "all") {
       query.overallVerificationStatus = status;
     }
-    
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } }
       ];
     }
-    
+
     const skip = (page - 1) * limit;
-    
+
     const providers = await User.find(query)
       .select("name email phone verification overallVerificationStatus createdAt")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-    
+
     const total = await User.countDocuments(query);
-    
+
     // Calculate verification stats
     const stats = {
       pending: await User.countDocuments({ role: "provider", overallVerificationStatus: "partial" }),
@@ -293,7 +293,7 @@ exports.getVerifications = async (req, res) => {
       rejected: await User.countDocuments({ role: "provider", overallVerificationStatus: "rejected" }),
       notStarted: await User.countDocuments({ role: "provider", overallVerificationStatus: "not_started" })
     };
-    
+
     res.json({
       providers,
       pagination: {
@@ -313,15 +313,15 @@ exports.getVerificationDetails = async (req, res) => {
     const provider = await User.findById(req.params.userId)
       .select("name email phone verification overallVerificationStatus createdAt")
       .populate("services", "title");
-    
+
     if (!provider) {
       return res.status(404).json({ message: "Provider not found" });
     }
-    
+
     if (provider.role !== "provider") {
       return res.status(400).json({ message: "User is not a provider" });
     }
-    
+
     res.json(provider);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -332,40 +332,40 @@ exports.updateVerificationStatus = async (req, res) => {
   try {
     const { userId, section } = req.params;
     const { status, rejectionReason } = req.body;
-    
+
     if (!["verified", "rejected", "pending"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
-    
+
     const validSections = [
-      "aadharCard", "panCard", "drivingLicense", 
+      "aadharCard", "panCard", "drivingLicense",
       "phone", "bankAccount", "profilePhoto"
     ];
-    
+
     if (!validSections.includes(section)) {
       return res.status(400).json({ message: "Invalid verification section" });
     }
-    
+
     const provider = await User.findById(userId);
     if (!provider || provider.role !== "provider") {
       return res.status(404).json({ message: "Provider not found" });
     }
-    
+
     if (!provider.verification) {
       provider.verification = {};
     }
-    
+
     // Update section status
     if (!provider.verification[section]) {
       provider.verification[section] = {};
     }
-    
+
     provider.verification[section].status = status;
     provider.verification[section].verifiedAt = status === "verified" ? new Date() : null;
     provider.verification[section].rejectionReason = status === "rejected" ? rejectionReason : null;
     provider.verification[section].reviewedBy = req.user.id;
     provider.verification[section].reviewedAt = new Date();
-    
+
     // Calculate overall verification status
     const sections = [
       provider.verification.aadharCard,
@@ -375,11 +375,11 @@ exports.updateVerificationStatus = async (req, res) => {
       provider.verification.bankAccount,
       provider.verification.profilePhoto
     ];
-    
+
     const verifiedCount = sections.filter(s => s && s.status === "verified").length;
     const rejectedCount = sections.filter(s => s && s.status === "rejected").length;
     const pendingCount = sections.filter(s => s && s.status === "pending").length;
-    
+
     if (verifiedCount === sections.length) {
       provider.overallVerificationStatus = "verified";
       provider.isVerified = true;
@@ -393,9 +393,9 @@ exports.updateVerificationStatus = async (req, res) => {
       provider.overallVerificationStatus = "not_started";
       provider.isVerified = false;
     }
-    
+
     await provider.save();
-    
+
     res.json({
       message: `${section} verification ${status} successfully`,
       verification: provider.verification,
@@ -410,45 +410,45 @@ exports.reviewVerificationSection = async (req, res) => {
   try {
     const { userId, section } = req.params;
     const { reviewNote, action } = req.body;
-    
+
     if (!["approve", "reject", "request_more"].includes(action)) {
       return res.status(400).json({ message: "Invalid action" });
     }
-    
+
     const validSections = [
-      "aadharCard", "panCard", "drivingLicense", 
+      "aadharCard", "panCard", "drivingLicense",
       "phone", "bankAccount", "profilePhoto"
     ];
-    
+
     if (!validSections.includes(section)) {
       return res.status(400).json({ message: "Invalid verification section" });
     }
-    
+
     const provider = await User.findById(userId);
     if (!provider || provider.role !== "provider") {
       return res.status(404).json({ message: "Provider not found" });
     }
-    
+
     if (!provider.verification) {
       provider.verification = {};
     }
-    
+
     if (!provider.verification[section]) {
       provider.verification[section] = {};
     }
-    
+
     // Add review note
     if (!provider.verification[section].reviewNotes) {
       provider.verification[section].reviewNotes = [];
     }
-    
+
     provider.verification[section].reviewNotes.push({
       note: reviewNote,
       action,
       reviewedBy: req.user.id,
       reviewedAt: new Date()
     });
-    
+
     // Update status based on action
     if (action === "approve") {
       provider.verification[section].status = "verified";
@@ -461,12 +461,12 @@ exports.reviewVerificationSection = async (req, res) => {
       provider.verification[section].status = "pending";
       provider.verification[section].rejectionReason = reviewNote;
     }
-    
+
     provider.verification[section].reviewedBy = req.user.id;
     provider.verification[section].reviewedAt = new Date();
-    
+
     await provider.save();
-    
+
     res.json({
       message: `Review note added for ${section}`,
       verification: provider.verification

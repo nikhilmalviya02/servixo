@@ -113,7 +113,7 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: function() {
+      required: function () {
         return !this.googleId; // Password required only if not using Google OAuth
       },
     },

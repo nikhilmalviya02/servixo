@@ -58,7 +58,7 @@ router.post("/", authMiddleware, async (req, res) => {
     // This endpoint is for final submission only - files should already be uploaded
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
-    
+
     await user.save();
 
     res.json({
@@ -95,9 +95,9 @@ router.put("/:section", authMiddleware, async (req, res) => {
   try {
     const { section } = req.params;
     const updateData = req.body;
-    
+
     const validSections = [
-      "aadharCard", "panCard", "drivingLicense", 
+      "aadharCard", "panCard", "drivingLicense",
       "phone", "bankAccount", "profilePhoto"
     ];
 
@@ -135,7 +135,7 @@ router.put("/:section", authMiddleware, async (req, res) => {
 
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
-    
+
     await user.save();
 
     res.json({
@@ -152,10 +152,10 @@ router.put("/:section", authMiddleware, async (req, res) => {
 // Upload document for verification
 router.post("/upload/:section", authMiddleware, (req, res, next) => {
   const { section } = req.params;
-  
+
   const validSections = [
-    "aadharCard", "panCard", "drivingLicense", 
-    "skillCertificate", "workExperience", 
+    "aadharCard", "panCard", "drivingLicense",
+    "skillCertificate", "workExperience",
     "bankAccount", "profilePhoto"
   ];
 
@@ -168,7 +168,7 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
   const storage = createVerificationStorage(section);
   console.log("Storage created successfully");
 
-  const upload = multer({ 
+  const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
@@ -195,7 +195,7 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
         field: err.field,
         storageError: err.storage
       });
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: err.message,
         details: err.code || 'UPLOAD_ERROR'
       });
@@ -207,13 +207,13 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
   try {
     const { section } = req.params;
     const file = req.file;
-    
+
     console.log("Upload request received:");
     console.log("- Section:", section);
     console.log("- File:", file);
     console.log("- Request body:", req.body);
     console.log("- User ID:", req.user?.id);
-        
+
     if (!file) {
       console.error("No file received in request");
       return res.status(400).json({ message: "No file uploaded" });
@@ -234,90 +234,90 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
 
     // Handle different section types
     if (section === "skillCertificate") {
-          const { name, issuer, issueDate } = req.body;
-          
-          if (!user.verification.skillCertificates) {
-            user.verification.skillCertificates = [];
-          }
+      const { name, issuer, issueDate } = req.body;
 
-          user.verification.skillCertificates.push({
-            name,
-            issuer,
-            issueDate: issueDate ? new Date(issueDate) : new Date(),
-            documentUrl,
-            cloudinaryPublicId: file.filename,
-            status: "pending"
-          });
-        } else if (section === "workExperience") {
-          const { company, position, duration } = req.body;
-          
-          if (!user.verification.workExperience) {
-            user.verification.workExperience = [];
-          }
+      if (!user.verification.skillCertificates) {
+        user.verification.skillCertificates = [];
+      }
 
-          user.verification.workExperience.push({
-            company,
-            position,
-            duration,
-            documentUrl,
-            cloudinaryPublicId: file.filename,
-            status: "pending"
-          });
-        } else {
-          // Single document sections
-          if (section === "profilePhoto") {
-            // Profile photo uses 'url' field instead of 'documentUrl'
-            user.verification[section] = {
-              ...user.verification[section],
-              url: documentUrl,  // Use 'url' for profilePhoto
-              cloudinaryPublicId: file.filename,
-              status: "pending",
-              verifiedAt: null,
-              rejectionReason: null
-            };
-            console.log("Profile photo saved with URL:", documentUrl);
-          } else {
-            // Other documents use 'documentUrl' field
-            user.verification[section] = {
-              ...user.verification[section],
-              documentUrl,
-              cloudinaryPublicId: file.filename,
-              status: "pending",
-              verifiedAt: null,
-              rejectionReason: null
-            };
-            console.log("Document saved with URL:", documentUrl);
-          }
+      user.verification.skillCertificates.push({
+        name,
+        issuer,
+        issueDate: issueDate ? new Date(issueDate) : new Date(),
+        documentUrl,
+        cloudinaryPublicId: file.filename,
+        status: "pending"
+      });
+    } else if (section === "workExperience") {
+      const { company, position, duration } = req.body;
 
-          // Add additional fields if provided
-          if (req.body.number) {
-            user.verification[section].number = req.body.number;
-          }
-          if (req.body.accountNumber) {
-            user.verification[section].accountNumber = req.body.accountNumber;
-          }
-          if (req.body.ifsc) {
-            user.verification[section].ifsc = req.body.ifsc;
-          }
-          if (req.body.holderName) {
-            user.verification[section].holderName = req.body.holderName;
-          }
-          if (req.body.url) {
-            user.verification[section].url = req.body.url;
-          }
-        }
+      if (!user.verification.workExperience) {
+        user.verification.workExperience = [];
+      }
 
-        // Update overall verification status
-        user.overallVerificationStatus = calculateOverallStatus(user.verification);
-        
-        await user.save();
+      user.verification.workExperience.push({
+        company,
+        position,
+        duration,
+        documentUrl,
+        cloudinaryPublicId: file.filename,
+        status: "pending"
+      });
+    } else {
+      // Single document sections
+      if (section === "profilePhoto") {
+        // Profile photo uses 'url' field instead of 'documentUrl'
+        user.verification[section] = {
+          ...user.verification[section],
+          url: documentUrl,  // Use 'url' for profilePhoto
+          cloudinaryPublicId: file.filename,
+          status: "pending",
+          verifiedAt: null,
+          rejectionReason: null
+        };
+        console.log("Profile photo saved with URL:", documentUrl);
+      } else {
+        // Other documents use 'documentUrl' field
+        user.verification[section] = {
+          ...user.verification[section],
+          documentUrl,
+          cloudinaryPublicId: file.filename,
+          status: "pending",
+          verifiedAt: null,
+          rejectionReason: null
+        };
+        console.log("Document saved with URL:", documentUrl);
+      }
 
-        res.json({
-          message: `${section} document uploaded successfully`,
-          verification: user.verification,
-          overallStatus: user.overallVerificationStatus,
-          documentUrl: documentUrl
-        });
+      // Add additional fields if provided
+      if (req.body.number) {
+        user.verification[section].number = req.body.number;
+      }
+      if (req.body.accountNumber) {
+        user.verification[section].accountNumber = req.body.accountNumber;
+      }
+      if (req.body.ifsc) {
+        user.verification[section].ifsc = req.body.ifsc;
+      }
+      if (req.body.holderName) {
+        user.verification[section].holderName = req.body.holderName;
+      }
+      if (req.body.url) {
+        user.verification[section].url = req.body.url;
+      }
+    }
+
+    // Update overall verification status
+    user.overallVerificationStatus = calculateOverallStatus(user.verification);
+
+    await user.save();
+
+    res.json({
+      message: `${section} document uploaded successfully`,
+      verification: user.verification,
+      overallStatus: user.overallVerificationStatus,
+      documentUrl: documentUrl
+    });
   } catch (error) {
     console.error("Upload verification error:", error);
     console.error("Error details:", {
@@ -326,9 +326,9 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
       user: req.user,
       body: req.body
     });
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Failed to upload document",
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -337,7 +337,7 @@ router.post("/upload/:section", authMiddleware, (req, res, next) => {
 router.post("/phone/send-otp", authMiddleware, async (req, res) => {
   try {
     const { phoneNumber } = req.body;
-    
+
     if (!phoneNumber || phoneNumber.length !== 10) {
       return res.status(400).json({ message: "Valid phone number required" });
     }
@@ -384,7 +384,7 @@ router.post("/phone/send-otp", authMiddleware, async (req, res) => {
 router.post("/phone/verify-otp", authMiddleware, async (req, res) => {
   try {
     const { otp } = req.body;
-    
+
     if (!otp || otp.length !== 6) {
       return res.status(400).json({ message: "Valid OTP required" });
     }
@@ -414,7 +414,7 @@ router.post("/phone/verify-otp", authMiddleware, async (req, res) => {
 
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
-    
+
     await user.save();
 
     res.json({
@@ -432,7 +432,7 @@ router.post("/phone/verify-otp", authMiddleware, async (req, res) => {
 router.delete("/:section/:index", authMiddleware, async (req, res) => {
   try {
     const { section, index } = req.params;
-    
+
     const validSections = ["skillCertificates", "workExperience"];
     if (!validSections.includes(section)) {
       return res.status(400).json({ message: "Invalid section for deletion" });
@@ -470,7 +470,7 @@ router.delete("/:section/:index", authMiddleware, async (req, res) => {
 
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
-    
+
     await user.save();
 
     res.json({
@@ -488,9 +488,9 @@ router.delete("/:section/:index", authMiddleware, async (req, res) => {
 router.delete("/:section", authMiddleware, async (req, res) => {
   try {
     const { section } = req.params;
-    
+
     const validSections = [
-      "aadharCard", "panCard", "drivingLicense", 
+      "aadharCard", "panCard", "drivingLicense",
       "bankAccount", "profilePhoto"
     ];
 
@@ -527,7 +527,7 @@ router.delete("/:section", authMiddleware, async (req, res) => {
 
     // Update overall verification status
     user.overallVerificationStatus = calculateOverallStatus(user.verification);
-    
+
     await user.save();
 
     res.json({
@@ -585,14 +585,14 @@ router.post("/test-cloudinary", authMiddleware, async (req, res) => {
     const result = await cloudinary.api.ping();
     console.log("Cloudinary ping result:", result);
 
-    res.json({ 
+    res.json({
       message: "Cloudinary configuration test successful",
       cloudinaryConnected: true,
       result
     });
   } catch (error) {
     console.error("Cloudinary test failed:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Cloudinary configuration test failed",
       error: error.message,
       cloudinaryConnected: false
