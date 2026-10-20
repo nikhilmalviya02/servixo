@@ -17,12 +17,21 @@ const app = express();
 
 connectDB();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://servixofrontend.vercel.app"
+];
+
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://servixofrontend.vercel.app"
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    }
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
@@ -34,15 +43,11 @@ const corsOptions = {
   credentials: true
 };
 
+// Apply CORS first — before any route or middleware that could throw
 app.use(cors(corsOptions));
 
-// Handle preflight requests for all routes
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    return cors(corsOptions)(req, res, next);
-  }
-  next();
-});
+// Explicitly handle OPTIONS preflight for all routes
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
@@ -61,5 +66,17 @@ app.use("/api/provider/verification", verificationRoutes);
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
+
+// Global error handler — always sends CORS headers so the browser
+// sees the real error (e.g. 500) instead of a misleading CORS error
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  console.error("Unhandled error:", err);
+  res.status(500).json({ message: "Internal server error", error: err.message });
+});
 
 module.exports = app;
