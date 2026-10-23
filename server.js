@@ -19,6 +19,7 @@ connectDB();
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
   "https://servixofrontend.vercel.app"
 ];
@@ -47,7 +48,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Explicitly handle OPTIONS preflight for all routes
-app.options("*", cors(corsOptions));
+app.options("/{*path}", cors(corsOptions));
 
 app.use(express.json());
 
@@ -79,4 +80,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error", error: err.message });
 });
 
-module.exports = app;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+module.exports = app;
