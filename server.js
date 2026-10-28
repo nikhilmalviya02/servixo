@@ -57,16 +57,22 @@ app.get("/", (req, res) => {
 });
 
 // Diagnostic endpoint — remove after debugging
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
   const mongoose = require("mongoose");
+  let connectError = null;
+  try {
+    await connectDB();
+  } catch (err) {
+    connectError = err.message;
+  }
   res.json({
     status: "ok",
     mongoUriSet: !!process.env.MONGO_URI,
-    mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + "..." : "NOT SET",
+    mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 30) + "..." : "NOT SET",
     jwtSecretSet: !!process.env.JWT_SECRET,
     dbState: mongoose.connection.readyState,
-    // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
     dbStateLabel: ["disconnected","connected","connecting","disconnecting"][mongoose.connection.readyState] || "unknown",
+    connectError: connectError || "none",
     nodeEnv: process.env.NODE_ENV || "not set"
   });
 });
