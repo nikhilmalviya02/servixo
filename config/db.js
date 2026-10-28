@@ -40,6 +40,7 @@ const connectDB = async () => {
     cached.conn = await cached.promise;
   } catch (err) {
     console.error("❌ Could not connect to MongoDB:", err.message);
+    throw err; // re-throw so caller sees the real error
   }
 
   return cached.conn;

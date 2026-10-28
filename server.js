@@ -68,7 +68,7 @@ app.get("/api/health", async (req, res) => {
   res.json({
     status: "ok",
     mongoUriSet: !!process.env.MONGO_URI,
-    mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 30) + "..." : "NOT SET",
+    mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 50) + "..." : "NOT SET",
     jwtSecretSet: !!process.env.JWT_SECRET,
     dbState: mongoose.connection.readyState,
     dbStateLabel: ["disconnected","connected","connecting","disconnecting"][mongoose.connection.readyState] || "unknown",
