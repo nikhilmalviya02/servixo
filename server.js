@@ -56,6 +56,21 @@ app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
+// Diagnostic endpoint — remove after debugging
+app.get("/api/health", (req, res) => {
+  const mongoose = require("mongoose");
+  res.json({
+    status: "ok",
+    mongoUriSet: !!process.env.MONGO_URI,
+    mongoUriPrefix: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + "..." : "NOT SET",
+    jwtSecretSet: !!process.env.JWT_SECRET,
+    dbState: mongoose.connection.readyState,
+    // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+    dbStateLabel: ["disconnected","connected","connecting","disconnecting"][mongoose.connection.readyState] || "unknown",
+    nodeEnv: process.env.NODE_ENV || "not set"
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/bookings", bookingRoutes);
